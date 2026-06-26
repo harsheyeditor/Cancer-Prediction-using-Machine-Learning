@@ -1,20 +1,10 @@
 """
-Data Loader Module - Cancer Prediction Project
-================================================
+Data Loader Module
+==================
 
-This module handles loading raw and processed datasets.
-It provides a single, consistent interface for accessing data
-throughout the project, regardless of whether the data comes
-from sklearn, a CSV file, or a URL.
-
-Why a separate data_loader module?
-----------------------------------
-1. DRY Principle: Load data once, use everywhere
-2. Single source of truth: If the data path changes, fix it in one place
-3. Testability: Easy to mock for unit tests
-4. Consistency: All notebooks use the same loading logic
-
-Author: Cancer Prediction ML Project
+Handles loading raw and processed datasets. Centralizing data 
+loading logic ensures a single source of truth for file paths 
+and formats, keeping training and exploratory code consistent.
 """
 
 import os
@@ -61,16 +51,36 @@ def load_from_sklearn() -> pd.DataFrame:
         
         # Rename sklearn columns to match project standards (e.g. 'worst radius' -> 'radius_worst')
         rename_map = {
-            'mean radius': 'radius_mean', 'mean texture': 'texture_mean', 'mean perimeter': 'perimeter_mean',
-            'mean area': 'area_mean', 'mean smoothness': 'smoothness_mean', 'mean compactness': 'compactness_mean',
-            'mean concavity': 'concavity_mean', 'mean concave points': 'concave points_mean', 'mean symmetry': 'symmetry_mean',
-            'mean fractal dimension': 'fractal dimension_mean', 'radius error': 'radius_se', 'texture error': 'texture_se',
-            'perimeter error': 'perimeter_se', 'area error': 'area_se', 'smoothness error': 'smoothness_se',
-            'compactness error': 'compactness_se', 'concavity error': 'concavity_se', 'concave points error': 'concave points_se',
-            'symmetry error': 'symmetry_se', 'fractal dimension error': 'fractal dimension_se', 'worst radius': 'radius_worst',
-            'worst texture': 'texture_worst', 'worst perimeter': 'perimeter_worst', 'worst area': 'area_worst',
-            'worst smoothness': 'smoothness_worst', 'worst compactness': 'compactness_worst', 'worst concavity': 'concavity_worst',
-            'worst concave points': 'concave points_worst', 'worst symmetry': 'symmetry_worst', 'worst fractal dimension': 'fractal dimension_worst'
+            'mean radius': 'radius_mean',
+            'mean texture': 'texture_mean',
+            'mean perimeter': 'perimeter_mean',
+            'mean area': 'area_mean',
+            'mean smoothness': 'smoothness_mean',
+            'mean compactness': 'compactness_mean',
+            'mean concavity': 'concavity_mean',
+            'mean concave points': 'concave points_mean',
+            'mean symmetry': 'symmetry_mean',
+            'mean fractal dimension': 'fractal dimension_mean',
+            'radius error': 'radius_se',
+            'texture error': 'texture_se',
+            'perimeter error': 'perimeter_se',
+            'area error': 'area_se',
+            'smoothness error': 'smoothness_se',
+            'compactness error': 'compactness_se',
+            'concavity error': 'concavity_se',
+            'concave points error': 'concave points_se',
+            'symmetry error': 'symmetry_se',
+            'fractal dimension error': 'fractal dimension_se',
+            'worst radius': 'radius_worst',
+            'worst texture': 'texture_worst',
+            'worst perimeter': 'perimeter_worst',
+            'worst area': 'area_worst',
+            'worst smoothness': 'smoothness_worst',
+            'worst compactness': 'compactness_worst',
+            'worst concavity': 'concavity_worst',
+            'worst concave points': 'concave points_worst',
+            'worst symmetry': 'symmetry_worst',
+            'worst fractal dimension': 'fractal dimension_worst'
         }
         df = df.rename(columns=rename_map)
 
@@ -96,10 +106,10 @@ def load_from_sklearn() -> pd.DataFrame:
 def save_raw_data(df: pd.DataFrame) -> str:
     """
     Save raw dataset to the data/raw/ directory.
-
-    We always keep a copy of the original, unmodified data.
-    This is critical for reproducibility - you should always be
-    able to trace back to the original source.
+    
+    Keeping an unmodified copy of the raw data allows us to 
+    safely rerun or alter preprocessing steps later without 
+    re-downloading.
 
     Args:
         df: The raw DataFrame to save
@@ -169,41 +179,3 @@ def load_processed_data() -> pd.DataFrame:
         raise
 
 
-def get_feature_descriptions() -> dict:
-    """
-    Return a dictionary mapping feature names to human-readable descriptions.
-
-    The Wisconsin Breast Cancer dataset has 30 features computed from
-    digitized FNA (Fine Needle Aspirate) images. Each cell nucleus has
-    10 base measurements, computed as mean, standard error, and "worst"
-    (mean of the 3 largest values).
-
-    Returns:
-        dict: Feature name -> description mapping
-    """
-    base_features = {
-        "radius": "Mean distance from center to perimeter points",
-        "texture": "Standard deviation of gray-scale values",
-        "perimeter": "Perimeter of the cell nucleus",
-        "area": "Area of the cell nucleus",
-        "smoothness": "Local variation in radius lengths",
-        "compactness": "Perimeter^2 / Area - 1.0",
-        "concavity": "Severity of concave portions of the contour",
-        "concave points": "Number of concave portions of the contour",
-        "symmetry": "Symmetry of the cell nucleus",
-        "fractal dimension": "Coastline approximation - 1 (complexity)",
-    }
-
-    descriptions = {}
-    for suffix, suffix_desc in [
-        ("mean", "Average value"),
-        ("se", "Standard error"),
-        ("worst", "Mean of 3 largest values"),
-    ]:
-        for feature, desc in base_features.items():
-            col_name = f"{feature}_{suffix}" if "_" not in feature else f"{feature.replace(' ', '_')}_{suffix}"
-            # Handle sklearn column naming (uses spaces)
-            sklearn_name = f"{feature} {suffix}" if " " not in feature else f"{feature} {suffix}"
-            descriptions[sklearn_name] = f"{desc} ({suffix_desc})"
-
-    return descriptions

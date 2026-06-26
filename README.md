@@ -4,18 +4,42 @@
 ![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.5.0-orange.svg)
 ![Gradio](https://img.shields.io/badge/Gradio-UI-success.svg)
 
-An industry-level, end-to-end Machine Learning project to predict breast cancer malignancy from Fine Needle Aspirate (FNA) cell measurements.
+A complete machine learning project demonstrating the workflow from data preprocessing to deployment using Gradio. It predicts breast cancer malignancy from Fine Needle Aspirate (FNA) cell measurements.
 
 ## Project Overview
 
-This project builds a predictive model using the **Wisconsin Breast Cancer dataset**. It follows the CRISP-DM methodology and demonstrates real-world software engineering practices for ML, including modular code, reproducible pipelines, and interactive deployment.
+This project builds a predictive model using the **Wisconsin Breast Cancer dataset**. The goal is to provide a clean, understandable, and reproducible pipeline that takes raw data and turns it into an interactive diagnostic tool. 
 
 ### Key Features
-- **15-Phase ML Lifecycle:** From Data Exploration to Deployment.
-- **Idempotent Data Pipeline:** Modular scripts (`src/`) separate from exploratory notebooks.
-- **Robust Feature Engineering:** Correlation removal and RandomForest importance selection.
-- **Rigorous Evaluation:** Stratified K-Fold Cross-Validation, Precision-Recall curves, and Confusion Matrices.
-- **Interactive UI:** A Gradio web app for real-time patient diagnosis.
+- **Data Pipeline:** Modular scripts handle loading, cleaning, and preprocessing data.
+- **Model Training:** Uses a Random Forest classifier and evaluates it using standard classification metrics.
+- **Interactive UI:** A Gradio web app allows for real-time patient diagnosis based on specific cell measurements.
+- **Clean Architecture:** Inference logic is isolated from the UI, making it easy to reuse in APIs or batch scripts.
+
+---
+
+## Application Preview
+
+![Gradio UI](images/app_preview.png)
+
+## Project Workflow
+
+```text
+       Raw Dataset
+            ↓
+      Preprocessing
+ (Handle missing, encode)
+            ↓
+      Feature Selection
+  (Top 5 by Importance)
+            ↓
+   Random Forest Model
+            ↓
+     Saved Pipeline 
+     (joblib artifacts)
+            ↓
+        Gradio UI
+```
 
 ---
 
@@ -24,23 +48,18 @@ This project builds a predictive model using the **Wisconsin Breast Cancer datas
 ```text
 Cancer Prediction using Machine Learning/
 |-- data/
-|   |-- raw/                  # Golden copy (never modified)
-|   |-- processed/            # Cleaned data and feature lists
-|-- images/                   # Generated plots and charts
-|-- models/                   # Serialized models and scalers (.pkl)
-|-- notebooks/                # Jupyter notebooks for each phase
-|   |-- 01_data_exploration.ipynb
-|   |-- 02_preprocessing.ipynb
-|   |-- ...
+|   |-- raw/                  # Original downloaded dataset (unmodified)
+|   |-- processed/            # Cleaned data ready for training
+|-- models/                   # Serialized model pipeline (.pkl) and artifacts
 |-- src/                      # Reusable Python modules
-|   |-- config.py                 # Central configuration (constants, paths)
-|   |-- data_loader.py
-|   |-- predict.py
-|   |-- preprocessing.py
-|   |-- train.py
-|   |-- utils.py
+|   |-- config.py                 # Central configuration (constants, UI bounds)
+|   |-- data_loader.py            # Logic to fetch and save data
+|   |-- predict.py                # Isolated inference engine
+|   |-- preprocessing.py          # Data cleaning and encoding functions
+|   |-- train.py                  # Script to train and evaluate the model
+|   |-- utils.py                  # Helper functions for logging and formatting
 |-- app.py                    # Gradio Web UI
-|-- requirements.txt          # Python dependencies
+|-- requirements.txt          # Minimal Python dependencies
 |-- README.md                 # Project documentation
 ```
 
@@ -48,31 +67,24 @@ Cancer Prediction using Machine Learning/
 
 ## Getting Started
 
-### 1. Installation & Environment Setup (Windows)
+### 1. Installation
 
-If you have downloaded this project and the `.venv` is broken or missing, follow these steps to recreate the Python environment reliably on Windows:
+Ensure you have Python 3.12 installed. Create a virtual environment and install the required dependencies:
 
 ```powershell
-# 1. Open PowerShell or Command Prompt in the project folder
-cd "C:\path\to\Cancer Prediction using Machine Learning"
+# Create a virtual environment
+python -m venv .venv
 
-# 2. Delete the broken .venv folder if it exists
-Remove-Item -Recurse -Force .venv
-
-# 3. Create a fresh virtual environment using the Python Launcher
-py -3.12 -m venv .venv
-# (If 'py' is not recognized, use 'python -m venv .venv')
-
-# 4. Activate the virtual environment
+# Activate the virtual environment (Windows)
 .\.venv\Scripts\activate
 
-# 5. Install the required dependencies
+# Install the minimal required dependencies
 pip install -r requirements.txt
 ```
 
 ### 2. Running the Data Pipeline & Training
 
-Before running the app or notebooks, generate the required artifacts (data and models). The `train.py` script will automatically download the dataset, process it, split it, train the machine learning pipeline, and save the artifacts.
+Before running the app, you need to train the model. The `train.py` script automatically downloads the dataset, processes it, splits it, trains the Random Forest classifier, and saves the resulting pipeline.
 
 ```powershell
 python -m src.train
@@ -87,45 +99,57 @@ python app.py
 ```
 This will start a local server at `http://127.0.0.1:7860/` where you can input cell measurements and receive real-time predictions.
 
-### 4. Exploring the Notebooks
-
-Launch Jupyter to explore the analysis step-by-step:
-
-```powershell
-jupyter notebook
-```
-
 ---
 
-## Reproducibility and Artifacts
+## Design Decisions
 
-To maintain a clean repository and ensure reproducibility from the source, the following generated artifacts are intentionally ignored by Git:
-- `data/raw/`: Raw datasets are downloaded dynamically via `sklearn` in the training pipeline.
-- `data/processed/`: Cleaned data and feature lists are generated from the raw data.
-- `models/`: Unified ML pipeline (`pipeline.pkl`) and medians (`feature_medians.json`) are regenerated during training.
-
-All of these artifacts can be deterministically recreated at any time by running `python -m src.train`.
+- **Random Forest:** Chosen because it handles non-linear relationships well, requires minimal feature scaling, and provides feature importance which helps in understanding the data.
+- **Isolated Inference Engine (`predict.py`):** This module isolates the inference logic from the UI. This ensures the prediction engine can be reused in future APIs or batch prediction scripts without relying on the Gradio interface.
+- **Centralized Configuration (`config.py`):** Keeps all file paths, model hyperparameters, and UI constants in one place to avoid "magic numbers" scattered throughout the codebase.
 
 ---
 
 ## Model Performance
 
-Our final Random Forest model achieved the following performance on the test set:
-- **Accuracy:** 96.5%
-- **Recall (Sensitivity):** 95.2% *(Crucial for minimizing false negatives)*
-- **F1 Score:** 95.2%
-- **AUC-ROC:** 99.1%
+The model's performance on the test set is evaluated using standard metrics:
+- **Accuracy**
+- **Recall (Sensitivity)** *(Crucial for minimizing false negatives)*
+- **F1 Score**
+- **AUC-ROC**
+
+Exact performance percentages can be dynamically generated by running the `train.py` script to ensure full reproducibility.
 
 ---
 
-## Contributing
+## Limitations
 
-Contributions are welcome! If you'd like to improve the model or add new features:
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- **Dataset:** Uses only the Wisconsin Breast Cancer Dataset, which is relatively small and collected from a single institution.
+- **Validation:** The model has not been validated on external, real-world clinical datasets.
+- **Clinical Use:** This project is for educational purposes only and is **not intended for clinical use**.
+- **Feature Set:** Uses only five selected features for the UI to keep it simple, which might drop potentially useful diagnostic information compared to using all 30 features.
+
+---
+
+## Lessons Learned
+
+Working on this project helped me understand:
+- Data preprocessing is often more important than model selection.
+- Separating training and inference makes code easier to maintain.
+- Random Forest provides strong performance with relatively little tuning.
+- A simple UI makes machine learning models easier to demonstrate.
+
+---
+
+## Future Improvements
+
+- [ ] Hyperparameter tuning (e.g., using GridSearchCV or RandomizedSearchCV)
+- [ ] SHAP Explainability to interpret individual predictions
+- [ ] Docker Deployment to containerize the application
+- [ ] REST API implementation (e.g., using FastAPI)
+- [ ] CI/CD pipeline setup for automated testing
+- [ ] Streamlit Comparison (building an alternative UI to compare with Gradio)
+
+---
 
 ## License
 

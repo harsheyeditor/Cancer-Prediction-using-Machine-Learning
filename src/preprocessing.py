@@ -1,19 +1,10 @@
 """
-Preprocessing Module - Cancer Prediction Project
-==================================================
+Preprocessing Module
+====================
 
 Reusable functions for data cleaning and preprocessing.
-This module is imported by notebooks and the main pipeline to ensure
-consistent preprocessing across all stages.
-
-Why a separate preprocessing module?
--------------------------------------
-1. DRY: Same cleaning logic used in notebooks AND production pipeline
-2. Testable: Functions can be unit tested independently
-3. Versioned: Changes to preprocessing are tracked in Git
-4. Portable: Easy to import in Flask/FastAPI deployment
-
-Author: Cancer Prediction ML Project
+Ensures consistent preprocessing across exploratory notebooks 
+and the production training pipeline.
 """
 
 import logging
@@ -107,14 +98,9 @@ def encode_target(
         raise KeyError(f"Target column '{target_col}' not found in DataFrame.")
 
     unique_vals = df[target_col].dropna().unique()
-    expected = {positive_label, negative_label}
-    actual = set(unique_vals)
-
-    if not actual.issubset(expected):
-        raise ValueError(
-            f"Unexpected values in '{target_col}': {actual - expected}. "
-            f"Expected only {expected}."
-        )
+    for val in unique_vals:
+        if val not in [positive_label, negative_label]:
+            raise ValueError(f"Unexpected target value: {val}. Expected {positive_label} or {negative_label}.")
 
     # Apply encoding
     le = LabelEncoder()

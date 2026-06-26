@@ -1,10 +1,19 @@
+"""
+Gradio Web Interface for Cancer Prediction
+==========================================
+
+Provides an interactive UI for users to input cell measurements 
+and receive real-time malignancy predictions.
+"""
+
 import sys
 import os
 import gradio as gr
 
 from src import config
 
-# Check if artifacts exist before starting
+# Ensure ML artifacts are present before starting the server.
+# This prevents the app from crashing during inference if the model hasn't been trained yet.
 pipeline_path = os.path.join(config.MODEL_DIR, config.PIPELINE_FILE)
 medians_path = os.path.join(config.MODEL_DIR, config.MEDIANS_FILE)
 
@@ -25,13 +34,29 @@ except Exception as e:
     print(f"[ERROR] Error initializing predictor: {e}")
     sys.exit(1)
 
-def predict_cancer(concave_points_worst, perimeter_worst, concave_points_mean, radius_worst, area_worst):
+
+def predict_cancer(
+    concave_points_worst: float,
+    perimeter_worst: float,
+    concave_points_mean: float,
+    radius_worst: float,
+    area_worst: float
+) -> str:
     """
-    Gradio interface function.
-    Collects inputs from the UI, passes them to the predictor, and formats the output.
+    Process UI inputs, run inference, and format the results.
+
+    Args:
+        concave_points_worst: Feature input from UI
+        perimeter_worst: Feature input from UI
+        concave_points_mean: Feature input from UI
+        radius_worst: Feature input from UI
+        area_worst: Feature input from UI
+
+    Returns:
+        A Markdown-formatted string with the diagnosis and confidence level.
     """
     
-    # Bundle inputs into dictionary matching the feature names
+    # Map UI inputs to the feature names expected by the trained pipeline
     patient_data = {
         'concave points_worst': concave_points_worst,
         'perimeter_worst': perimeter_worst,
@@ -41,10 +66,10 @@ def predict_cancer(concave_points_worst, perimeter_worst, concave_points_mean, r
     }
     
     try:
-        # Get prediction
+        # Use the trained prediction pipeline to generate the result
         result = predictor.predict(patient_data)
         
-        # Format output text
+        # Format the output into a readable Markdown block for the Gradio frontend
         diagnosis = result['diagnosis']
         confidence = result['confidence_pct']
         icon = "🔴" if diagnosis == "Malignant" else "🟢"
@@ -56,15 +81,45 @@ def predict_cancer(concave_points_worst, perimeter_worst, concave_points_mean, r
         return f"**Error processing prediction:** {str(e)}"
 
 # Define the Gradio interface
-# Using min/max/median from the dataset for the top 5 features
+# Using UI bounds from config.py to avoid magic numbers and keep the interface easily adjustable.
 demo = gr.Interface(
     fn=predict_cancer,
     inputs=[
-        gr.Slider(0.0, 0.3, value=0.10, step=0.01, label="Concave Points (Worst)"),
-        gr.Slider(50.0, 255.0, value=97.66, step=1.0, label="Perimeter (Worst)"),
-        gr.Slider(0.0, 0.25, value=0.03, step=0.01, label="Concave Points (Mean)"),
-        gr.Slider(7.0, 40.0, value=14.97, step=0.1, label="Radius (Worst)"),
-        gr.Slider(100.0, 4500.0, value=686.5, step=10.0, label="Area (Worst)")
+        gr.Slider(
+            config.UI_SLIDER_BOUNDS["concave points_worst"]["minimum"], 
+            config.UI_SLIDER_BOUNDS["concave points_worst"]["maximum"], 
+            value=config.UI_SLIDER_BOUNDS["concave points_worst"]["default"], 
+            step=config.UI_SLIDER_BOUNDS["concave points_worst"]["step"], 
+            label="Concave Points (Worst)"
+        ),
+        gr.Slider(
+            config.UI_SLIDER_BOUNDS["perimeter_worst"]["minimum"], 
+            config.UI_SLIDER_BOUNDS["perimeter_worst"]["maximum"], 
+            value=config.UI_SLIDER_BOUNDS["perimeter_worst"]["default"], 
+            step=config.UI_SLIDER_BOUNDS["perimeter_worst"]["step"], 
+            label="Perimeter (Worst)"
+        ),
+        gr.Slider(
+            config.UI_SLIDER_BOUNDS["concave points_mean"]["minimum"], 
+            config.UI_SLIDER_BOUNDS["concave points_mean"]["maximum"], 
+            value=config.UI_SLIDER_BOUNDS["concave points_mean"]["default"], 
+            step=config.UI_SLIDER_BOUNDS["concave points_mean"]["step"], 
+            label="Concave Points (Mean)"
+        ),
+        gr.Slider(
+            config.UI_SLIDER_BOUNDS["radius_worst"]["minimum"], 
+            config.UI_SLIDER_BOUNDS["radius_worst"]["maximum"], 
+            value=config.UI_SLIDER_BOUNDS["radius_worst"]["default"], 
+            step=config.UI_SLIDER_BOUNDS["radius_worst"]["step"], 
+            label="Radius (Worst)"
+        ),
+        gr.Slider(
+            config.UI_SLIDER_BOUNDS["area_worst"]["minimum"], 
+            config.UI_SLIDER_BOUNDS["area_worst"]["maximum"], 
+            value=config.UI_SLIDER_BOUNDS["area_worst"]["default"], 
+            step=config.UI_SLIDER_BOUNDS["area_worst"]["step"], 
+            label="Area (Worst)"
+        )
     ],
     outputs=gr.Markdown(),
     title="Breast Cancer Diagnostic Tool",

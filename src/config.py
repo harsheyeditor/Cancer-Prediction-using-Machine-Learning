@@ -1,15 +1,13 @@
 """
-Configuration Module - Cancer Prediction Project
-================================================
+Configuration Module
+====================
 
-This module serves as the single source of truth for all project configurations.
-It stores file paths, magic numbers, model hyperparameters, and column definitions.
-
-Author: Cancer Prediction ML Project
+Stores file paths, model hyperparameters, and UI settings for the project.
+Centralizing these values avoids scattering "magic numbers" across different modules.
 """
 
 import os
-from typing import List
+from typing import List, Dict, Any
 
 # =============================================================================
 # Directories & File Paths
@@ -48,9 +46,20 @@ SELECTED_FEATURES: List[str] = [
 ]
 
 # Random Forest Hyperparameters
-MODEL_HYPERPARAMETERS = {
+MODEL_HYPERPARAMETERS: Dict[str, Any] = {
     "n_estimators": 200,
     "max_depth": 10,
     "random_state": RANDOM_STATE,
     "n_jobs": -1
+}
+
+# =============================================================================
+# UI Constants
+# =============================================================================
+UI_SLIDER_BOUNDS: Dict[str, Dict[str, float]] = {
+    "concave points_worst": {"minimum": 0.0, "maximum": 0.3, "default": 0.10, "step": 0.01},
+    "perimeter_worst": {"minimum": 50.0, "maximum": 255.0, "default": 97.66, "step": 1.0},
+    "concave points_mean": {"minimum": 0.0, "maximum": 0.25, "default": 0.03, "step": 0.01},
+    "radius_worst": {"minimum": 7.0, "maximum": 40.0, "default": 14.97, "step": 0.1},
+    "area_worst": {"minimum": 100.0, "maximum": 4500.0, "default": 686.5, "step": 10.0},
 }

@@ -1,12 +1,11 @@
 """
-Inference Module - Cancer Prediction Project
-==================================================
+Inference Module
+================
 
-Reusable class for predicting cancer diagnosis from raw patient data.
-This encapsulates the pipeline (scaler + model) and feature medians into a single
-interface that can be imported by any UI (Gradio, Flask, FastAPI).
-
-Author: Cancer Prediction ML Project
+Isolates inference logic from the UI so the prediction engine 
+can later be reused in APIs, batch prediction scripts, or 
+alternative frontends. Encapsulates the ML pipeline (scaler + model) 
+and feature medians into a single unified interface.
 """
 
 import os
@@ -96,13 +95,12 @@ class CancerPredictor:
             'inputs_used': {k: float(v) for k, v in full_data.items()}
         }
 
-# For quick testing
 if __name__ == "__main__":
+    # Smoke test to verify module loading and artifact paths
     logging.basicConfig(level=logging.INFO)
     try:
         predictor = CancerPredictor(model_dir=config.MODEL_DIR)
-        print("Testing with medians:")
-        result = predictor.predict({})
-        print(f"Result: {result['diagnosis']} ({result['confidence_pct']}% confidence)")
+        print("Predictor loaded successfully.")
     except Exception as e:
-        print(f"Test failed: {e}")
+        print(f"Failed to load predictor: {e}")
+

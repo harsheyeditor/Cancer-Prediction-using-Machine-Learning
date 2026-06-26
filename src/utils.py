@@ -19,13 +19,6 @@ def setup_logging(level: int = logging.INFO) -> logging.Logger:
     """
     Configure project-wide logging with a consistent format.
 
-    Why use logging instead of print()?
-    ------------------------------------
-    1. Log levels (DEBUG, INFO, WARNING, ERROR) let you control verbosity
-    2. Timestamps help track execution flow
-    3. Module names help locate the source of messages
-    4. Production systems use log aggregation tools that expect structured logs
-
     Args:
         level: Logging level (default: INFO)
 
