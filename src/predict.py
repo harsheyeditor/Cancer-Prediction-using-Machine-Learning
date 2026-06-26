@@ -1,5 +1,5 @@
 """
-Inference Module — Cancer Prediction Project
+Inference Module - Cancer Prediction Project
 ==================================================
 
 Reusable class for predicting cancer diagnosis from raw patient data.
@@ -98,17 +98,17 @@ class CancerPredictor:
         probabilities = self.model.predict_proba(X_scaled)[0]
         
         diagnosis = "Malignant" if pred_code == 1 else "Benign"
-        confidence = probabilities[pred_code] * 100
+        confidence = float(probabilities[pred_code] * 100)
         
         return {
             'prediction_code': pred_code,
             'diagnosis': diagnosis,
             'confidence_pct': round(confidence, 2),
             'probabilities': {
-                'Benign': round(probabilities[0] * 100, 2),
-                'Malignant': round(probabilities[1] * 100, 2)
+                'Benign': round(float(probabilities[0] * 100), 2),
+                'Malignant': round(float(probabilities[1] * 100), 2)
             },
-            'inputs_used': full_data
+            'inputs_used': {k: float(v) for k, v in full_data.items()}
         }
 
 # For quick testing

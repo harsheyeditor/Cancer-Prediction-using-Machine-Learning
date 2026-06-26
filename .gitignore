@@ -26,7 +26,8 @@ __pycache__/
 
 # Project specific ignores
 # Note: In a real project, we might ignore data/, but for a portfolio we might keep raw data if it's small/public.
-# Let's ignore processed data (since we can regenerate it) and large models.
+# Let's ignore all generated data and models since we can reproduce them from sklearn.
+data/raw/
 data/processed/
 models/
 images/

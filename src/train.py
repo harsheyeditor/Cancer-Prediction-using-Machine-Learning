@@ -1,10 +1,10 @@
 """
-Training Module — Cancer Prediction Project
+Training Module - Cancer Prediction Project
 ==================================================
 
-Standalone script for training the final model. 
-This script loads the cleaned data, scales it, trains the model,
-and saves the artifacts (model + scaler) to the models/ directory.
+Standalone script for training the final model.
+This script loads the dataset, processes it using the shared preprocessing module,
+trains the model, and saves the artifacts to the models/ directory.
 
 Usage:
     python src/train.py
@@ -17,7 +17,8 @@ import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
-from preprocessing import scale_features
+from data_loader import load_from_sklearn, save_raw_data
+from preprocessing import clean_dataset, scale_features
 
 # Configure logging
 logging.basicConfig(
@@ -26,93 +27,92 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Absolute paths
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+PROCESSED_DATA_PATH = os.path.join(DATA_DIR, "processed", "breast_cancer_cleaned.csv")
+FEATURES_PATH = os.path.join(DATA_DIR, "processed", "selected_features.json")
+MODEL_DIR = os.path.join(PROJECT_ROOT, "models")
+MODEL_OUT = os.path.join(MODEL_DIR, "cancer_prediction_model.pkl")
+SCALER_OUT = os.path.join(MODEL_DIR, "scaler.pkl")
+
+def create_directories():
+    os.makedirs(os.path.dirname(PROCESSED_DATA_PATH), exist_ok=True)
+    os.makedirs(MODEL_DIR, exist_ok=True)
+
 def train_and_save_model():
     """Train the final production model and save artifacts."""
+    create_directories()
     
-    # Define paths
-    data_path = os.path.join("..", "data", "processed", "breast_cancer_cleaned.csv")
-    features_path = os.path.join("..", "data", "processed", "selected_features.json")
-    model_dir = os.path.join("..", "models")
+    # 1. Load Data using data_loader
+    logger.info("Loading breast cancer dataset using data_loader...")
+    df_raw = load_from_sklearn()
     
-    os.makedirs(model_dir, exist_ok=True)
+    # Save the raw data (which now has correct feature names and 'M'/'B' targets)
+    save_raw_data(df_raw)
     
-    # Load data
-    logger.info("Loading processed data...")
-    df = pd.read_csv(data_path)
+    # 2. Preprocess Data using preprocessing module
+    logger.info("Cleaning dataset...")
+    # clean_dataset drops 'id', handles missing values, and encodes M->1, B->0
+    df_clean, label_encoder = clean_dataset(df_raw)
     
-    # Load selected features
-    with open(features_path, 'r') as f:
-        selected_features = json.load(f)
-        
-    X = df[selected_features]
-    y = df['diagnosis']
-    logger.info(f"Loaded {len(selected_features)} features for {len(X)} samples.")
+    # 3. Feature Selection
+    selected_features = [
+        'concave points_worst',
+        'perimeter_worst',
+        'concave points_mean',
+        'radius_worst',
+        'area_worst'
+    ]
     
-    # For the final production model, we train on ALL available data
-    # (We already evaluated the model's generalization in Phase 6-9 using splits/CV)
-    logger.info("Scaling features on full dataset...")
+    # Verify features exist
+    for f in selected_features:
+        if f not in df_clean.columns:
+            logger.error(f"Feature {f} not found in dataframe.")
+            
+    X = df_clean[selected_features]
+    y = df_clean['diagnosis']
     
-    # We use our scaler from preprocessing
-    from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
-    X_scaled = pd.DataFrame(
-        scaler.fit_transform(X),
-        columns=X.columns
-    )
+    # Save processed data and selected features
+    df_clean.to_csv(PROCESSED_DATA_PATH, index=False)
+    with open(FEATURES_PATH, 'w') as f:
+        json.dump(selected_features, f)
+    logger.info("Saved processed data and features.")
     
-    # Initialize and train model
-    # We found Random Forest to be robust during cross-validation
-    logger.info("Training Random Forest classifier...")
-    model = RandomForestClassifier(
-        n_estimators=200, 
-        max_depth=10, 
-        random_state=42, 
-        n_jobs=-1
-    )
+    # 4. Scale features
+    logger.info("Scaling features...")
+    # scale_features takes (X_train, X_test). Since we are training the final model on ALL data,
+    # we just pass X as both train and test to get the fitted scaler and scaled data.
+    X_scaled, _, scaler = scale_features(X, X)
+    
+    # 5. Train model
+    logger.info("Training RandomForestClassifier...")
+    model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42, n_jobs=-1)
     model.fit(X_scaled, y)
     
-    # Save artifacts
-    model_out = os.path.join(model_dir, "cancer_prediction_model.pkl")
-    scaler_out = os.path.join(model_dir, "scaler.pkl")
+    # 6. Save artifacts
+    joblib.dump(model, MODEL_OUT)
+    joblib.dump(scaler, SCALER_OUT)
+    logger.info(f"[PASS] Model saved to: {MODEL_OUT}")
+    logger.info(f"[PASS] Scaler saved to: {SCALER_OUT}")
     
-    joblib.dump(model, model_out)
-    joblib.dump(scaler, scaler_out)
-    
-    logger.info(f"✅ Model saved to: {model_out}")
-    logger.info(f"✅ Scaler saved to: {scaler_out}")
-    logger.info("Training pipeline complete.")
+    # Validation Check
+    if os.path.exists(MODEL_OUT) and os.path.exists(SCALER_OUT):
+        logger.info("Validation: Model artifacts exist.")
+    else:
+        logger.error("Validation: Model artifacts missing.")
+        
+    # Smoke Test
+    try:
+        from predict import CancerPredictor
+        predictor = CancerPredictor(model_dir=MODEL_DIR, data_dir=DATA_DIR)
+        test_patient = {f: 10.0 for f in selected_features}
+        res = predictor.predict(test_patient)
+        logger.info(f"Smoke test successful: Prediction = {res['diagnosis']}")
+    except ImportError:
+        logger.warning("Smoke test skipped: Could not import CancerPredictor (ensure you run from root or src).")
+    except Exception as e:
+        logger.error(f"Smoke test failed: {e}")
 
 if __name__ == "__main__":
-    # Ensure script is run from src/ directory or adjust paths
-    current_dir = os.path.basename(os.getcwd())
-    if current_dir != "src":
-        logger.warning("This script expects to be run from the src/ directory.")
-        logger.warning("Attempting to adjust paths... (running from root)")
-        
-        # Simple path adjustment if run from root
-        def adjust_path(p): return p.replace("../", "")
-        
-        data_path = adjust_path("../data/processed/breast_cancer_cleaned.csv")
-        features_path = adjust_path("../data/processed/selected_features.json")
-        model_dir = adjust_path("../models")
-        
-        os.makedirs(model_dir, exist_ok=True)
-        df = pd.read_csv(data_path)
-        with open(features_path, 'r') as f:
-            selected_features = json.load(f)
-        X = df[selected_features]
-        y = df['diagnosis']
-        
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
-        
-        model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42, n_jobs=-1)
-        model.fit(X_scaled, y)
-        
-        joblib.dump(model, os.path.join(model_dir, "cancer_prediction_model.pkl"))
-        joblib.dump(scaler, os.path.join(model_dir, "scaler.pkl"))
-        
-        logger.info("✅ Training complete (Root execution).")
-    else:
-        train_and_save_model()
+    train_and_save_model()

@@ -1,5 +1,5 @@
 """
-Utilities Module — Cancer Prediction Project
+Utilities Module - Cancer Prediction Project
 =============================================
 
 Shared utility functions used across multiple notebooks and modules.
@@ -100,13 +100,13 @@ def format_percentage(value: float, decimals: int = 2) -> str:
     return f"{value * 100:.{decimals}f}%"
 
 
-def print_section_header(title: str, emoji: str = "📌") -> None:
+def print_section_header(title: str, emoji: str = "[*]") -> None:
     """
     Print a visually distinct section header for notebook output.
 
     Args:
         title: Section title text
-        emoji: Leading emoji (default: 📌)
+        emoji: Leading symbol (default: [*])
     """
     separator = "=" * 60
     print(f"\n{separator}")
@@ -125,7 +125,7 @@ def print_metric(name: str, value: Any, target: Optional[float] = None) -> None:
 
     Example:
         >>> print_metric("Accuracy", 0.9567, target=0.95)
-        ✅ Accuracy: 95.67% (Target: 95.00%) — PASS
+        [PASS] Accuracy: 95.67% (Target: 95.00%)
     """
     if isinstance(value, float) and value <= 1.0:
         formatted = format_percentage(value)
@@ -134,7 +134,7 @@ def print_metric(name: str, value: Any, target: Optional[float] = None) -> None:
 
     if target is not None:
         target_str = format_percentage(target)
-        status = "✅ PASS" if value >= target else "❌ BELOW TARGET"
-        print(f"  {'✅' if value >= target else '❌'} {name}: {formatted} (Target: {target_str}) — {status}")
+        status = "[PASS]" if value >= target else "[BELOW TARGET]"
+        print(f"  {status} {name}: {formatted} (Target: {target_str})")
     else:
-        print(f"  📊 {name}: {formatted}")
+        print(f"  [*] {name}: {formatted}")

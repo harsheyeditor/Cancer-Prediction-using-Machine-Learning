@@ -1,5 +1,5 @@
 """
-Data Loader Module — Cancer Prediction Project
+Data Loader Module - Cancer Prediction Project
 ================================================
 
 This module handles loading raw and processed datasets.
@@ -65,6 +65,21 @@ def load_from_sklearn() -> pd.DataFrame:
 
         # Convert to DataFrame with proper column names
         df = pd.DataFrame(data.data, columns=data.feature_names)
+        
+        # Rename sklearn columns to match project standards (e.g. 'worst radius' -> 'radius_worst')
+        rename_map = {
+            'mean radius': 'radius_mean', 'mean texture': 'texture_mean', 'mean perimeter': 'perimeter_mean',
+            'mean area': 'area_mean', 'mean smoothness': 'smoothness_mean', 'mean compactness': 'compactness_mean',
+            'mean concavity': 'concavity_mean', 'mean concave points': 'concave points_mean', 'mean symmetry': 'symmetry_mean',
+            'mean fractal dimension': 'fractal dimension_mean', 'radius error': 'radius_se', 'texture error': 'texture_se',
+            'perimeter error': 'perimeter_se', 'area error': 'area_se', 'smoothness error': 'smoothness_se',
+            'compactness error': 'compactness_se', 'concavity error': 'concavity_se', 'concave points error': 'concave points_se',
+            'symmetry error': 'symmetry_se', 'fractal dimension error': 'fractal dimension_se', 'worst radius': 'radius_worst',
+            'worst texture': 'texture_worst', 'worst perimeter': 'perimeter_worst', 'worst area': 'area_worst',
+            'worst smoothness': 'smoothness_worst', 'worst compactness': 'compactness_worst', 'worst concavity': 'concavity_worst',
+            'worst concave points': 'concave points_worst', 'worst symmetry': 'symmetry_worst', 'worst fractal dimension': 'fractal dimension_worst'
+        }
+        df = df.rename(columns=rename_map)
 
         # Add target column: sklearn uses 0=malignant, 1=benign
         # We'll map to string labels first for clarity
@@ -90,7 +105,7 @@ def save_raw_data(df: pd.DataFrame) -> str:
     Save raw dataset to the data/raw/ directory.
 
     We always keep a copy of the original, unmodified data.
-    This is critical for reproducibility — you should always be
+    This is critical for reproducibility - you should always be
     able to trace back to the original source.
 
     Args:
@@ -158,7 +173,7 @@ def get_feature_descriptions() -> dict:
     (mean of the 3 largest values).
 
     Returns:
-        dict: Feature name → description mapping
+        dict: Feature name -> description mapping
     """
     base_features = {
         "radius": "Mean distance from center to perimeter points",
@@ -166,7 +181,7 @@ def get_feature_descriptions() -> dict:
         "perimeter": "Perimeter of the cell nucleus",
         "area": "Area of the cell nucleus",
         "smoothness": "Local variation in radius lengths",
-        "compactness": "Perimeter² / Area - 1.0",
+        "compactness": "Perimeter^2 / Area - 1.0",
         "concavity": "Severity of concave portions of the contour",
         "concave points": "Number of concave portions of the contour",
         "symmetry": "Symmetry of the cell nucleus",

@@ -1,5 +1,5 @@
 """
-Preprocessing Module — Cancer Prediction Project
+Preprocessing Module - Cancer Prediction Project
 ==================================================
 
 Reusable functions for data cleaning and preprocessing.
@@ -74,8 +74,8 @@ def encode_target(
     """
     Encode the binary target variable to numeric (0/1).
 
-    Malignant (M) → 1 (positive class)
-    Benign (B)    → 0 (negative class)
+    Malignant (M) -> 1 (positive class)
+    Benign (B)    -> 0 (negative class)
 
     Args:
         df: Input DataFrame with string target column
@@ -117,7 +117,7 @@ def encode_target(
     assert le.transform([positive_label])[0] == 1, f"{positive_label} should be 1"
 
     logger.info(
-        "Encoded '%s': %s→0, %s→1",
+        "Encoded '%s': %s->0, %s->1",
         target_col,
         negative_label,
         positive_label,
@@ -182,7 +182,7 @@ def handle_missing_values(
             strategy,
         )
     else:
-        logger.info("No missing values found — no imputation needed")
+        logger.info("No missing values found - no imputation needed")
 
     return df
 
@@ -232,7 +232,7 @@ def clean_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, LabelEncoder]:
     df, le = encode_target(df)
 
     logger.info(
-        "Cleaning pipeline complete: %d rows × %d columns",
+        "Cleaning pipeline complete: %d rows x %d columns",
         df.shape[0],
         df.shape[1],
     )
@@ -281,7 +281,7 @@ def scale_features(
     )
 
     logger.info(
-        "Scaled %d features. Train mean≈%.4f, Test mean≈%.4f",
+        "Scaled %d features. Train mean ~= %.4f, Test mean ~= %.4f",
         X_train.shape[1],
         X_train_scaled.mean().mean(),
         X_test_scaled.mean().mean(),
