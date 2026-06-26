@@ -42,34 +42,7 @@ def setup_logging(level: int = logging.INFO) -> logging.Logger:
     return logger
 
 
-def add_src_to_path() -> None:
-    """
-    Add the src/ directory to Python's import path.
 
-    This allows notebooks in the notebooks/ folder to import
-    modules from the src/ folder using standard import syntax:
-
-        from data_loader import load_from_sklearn
-
-    Instead of messy relative imports or sys.path hacks scattered
-    throughout every notebook.
-
-    Why is this needed?
-    -------------------
-    Python only searches for imports in:
-    1. The directory of the running script
-    2. Directories in PYTHONPATH
-    3. The default installation directories
-
-    Since our notebooks are in notebooks/ and our modules are in src/,
-    we need to explicitly add src/ to the search path.
-    """
-    # Navigate from notebooks/ up to project root, then into src/
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    src_path = os.path.join(project_root, "src")
-
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
 
 
 def get_project_root() -> str:

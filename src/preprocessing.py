@@ -21,7 +21,9 @@ from typing import Tuple, List, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
+
+from src import config
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -67,9 +69,9 @@ def drop_unnecessary_columns(
 
 def encode_target(
     df: pd.DataFrame,
-    target_col: str = "diagnosis",
-    positive_label: str = "M",
-    negative_label: str = "B",
+    target_col: str = None,
+    positive_label: str = None,
+    negative_label: str = None,
 ) -> Tuple[pd.DataFrame, LabelEncoder]:
     """
     Encode the binary target variable to numeric (0/1).
@@ -79,9 +81,9 @@ def encode_target(
 
     Args:
         df: Input DataFrame with string target column
-        target_col: Name of the target column
-        positive_label: Label for the positive class
-        negative_label: Label for the negative class
+        target_col: Name of the target column (defaults to config.TARGET_COLUMN)
+        positive_label: Label for the positive class (defaults to config.POSITIVE_LABEL)
+        negative_label: Label for the negative class (defaults to config.NEGATIVE_LABEL)
 
     Returns:
         Tuple of:
@@ -96,8 +98,15 @@ def encode_target(
         >>> df_encoded['diagnosis'].unique()
         array([1, 0])
     """
+    target_col = target_col or config.TARGET_COLUMN
+    positive_label = positive_label or config.POSITIVE_LABEL
+    negative_label = negative_label or config.NEGATIVE_LABEL
+
     # Validate target values
-    unique_vals = df[target_col].unique()
+    if target_col not in df.columns:
+        raise KeyError(f"Target column '{target_col}' not found in DataFrame.")
+
+    unique_vals = df[target_col].dropna().unique()
     expected = {positive_label, negative_label}
     actual = set(unique_vals)
 
@@ -239,51 +248,4 @@ def clean_dataset(df: pd.DataFrame) -> Tuple[pd.DataFrame, LabelEncoder]:
     return df, le
 
 
-def scale_features(
-    X_train: pd.DataFrame,
-    X_test: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame, StandardScaler]:
-    """
-    Standardize features using StandardScaler.
 
-    CRITICAL: The scaler is fit ONLY on the training data, then applied
-    to both train and test. This prevents data leakage.
-
-    Why StandardScaler?
-    - Ensures all features have mean=0 and std=1
-    - Required for distance-based algorithms (KNN, SVM)
-    - Helps gradient-based algorithms converge faster
-
-    Args:
-        X_train: Training features
-        X_test: Test features
-
-    Returns:
-        Tuple of:
-        - pd.DataFrame: Scaled training features
-        - pd.DataFrame: Scaled test features
-        - StandardScaler: Fitted scaler (save with model for production)
-    """
-    scaler = StandardScaler()
-
-    # Fit on training data ONLY
-    X_train_scaled = pd.DataFrame(
-        scaler.fit_transform(X_train),
-        columns=X_train.columns,
-        index=X_train.index,
-    )
-
-    # Transform test data using training statistics
-    X_test_scaled = pd.DataFrame(
-        scaler.transform(X_test),
-        columns=X_test.columns,
-        index=X_test.index,
-    )
-
-    logger.info(
-        "Scaled %d features. Train mean ~= %.4f, Test mean ~= %.4f",
-        X_train.shape[1],
-        X_train_scaled.mean().mean(),
-        X_test_scaled.mean().mean(),
-    )
-    return X_train_scaled, X_test_scaled, scaler

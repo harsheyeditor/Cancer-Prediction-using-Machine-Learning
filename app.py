@@ -2,39 +2,34 @@ import sys
 import os
 import gradio as gr
 
-# Robust paths
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-SRC_DIR = os.path.join(PROJECT_ROOT, 'src')
-MODEL_DIR = os.path.join(PROJECT_ROOT, 'models')
-DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
+from src import config
 
 # Check if artifacts exist before starting
-model_path = os.path.join(MODEL_DIR, "cancer_prediction_model.pkl")
-scaler_path = os.path.join(MODEL_DIR, "scaler.pkl")
+pipeline_path = os.path.join(config.MODEL_DIR, config.PIPELINE_FILE)
+medians_path = os.path.join(config.MODEL_DIR, config.MEDIANS_FILE)
 
-if not os.path.exists(model_path) or not os.path.exists(scaler_path):
+if not os.path.exists(pipeline_path) or not os.path.exists(medians_path):
     print("==================================================")
     print("[ERROR] ML Artifacts are missing!")
-    print(f"Could not find model at: {model_path}")
-    print("Please run the training pipeline first to generate the model and data:")
-    print("    python src/train.py")
+    print(f"Could not find pipeline at: {pipeline_path}")
+    print("Please run the training script first to generate the model and data:")
+    print("    python -m src.train")
     print("==================================================")
     sys.exit(1)
 
-# Add src to path so we can import our predictor
-if SRC_DIR not in sys.path:
-    sys.path.insert(0, SRC_DIR)
-
 try:
-    from predict import CancerPredictor
-    predictor = CancerPredictor(model_dir=MODEL_DIR, data_dir=DATA_DIR)
+    from src.predict import CancerPredictor
+    predictor = CancerPredictor(model_dir=config.MODEL_DIR)
     print("[PASS] Predictor initialized successfully.")
 except Exception as e:
     print(f"[ERROR] Error initializing predictor: {e}")
     sys.exit(1)
 
 def predict_cancer(concave_points_worst, perimeter_worst, concave_points_mean, radius_worst, area_worst):
-    """Gradio interface function."""
+    """
+    Gradio interface function.
+    Collects inputs from the UI, passes them to the predictor, and formats the output.
+    """
     
     # Bundle inputs into dictionary matching the feature names
     patient_data = {
@@ -45,17 +40,20 @@ def predict_cancer(concave_points_worst, perimeter_worst, concave_points_mean, r
         'area_worst': area_worst
     }
     
-    # Get prediction
-    result = predictor.predict(patient_data)
-    
-    # Format output text
-    diagnosis = result['diagnosis']
-    confidence = result['confidence_pct']
-    icon = "[Malignant]" if diagnosis == "Malignant" else "[Benign]"
-    
-    output_text = f"{icon} **Diagnosis:** {diagnosis}\n**Confidence:** {confidence}%"
-    
-    return output_text
+    try:
+        # Get prediction
+        result = predictor.predict(patient_data)
+        
+        # Format output text
+        diagnosis = result['diagnosis']
+        confidence = result['confidence_pct']
+        icon = "🔴" if diagnosis == "Malignant" else "🟢"
+        
+        output_text = f"### {icon} Diagnosis: **{diagnosis}**\n**Confidence:** {confidence}%"
+        return output_text
+        
+    except Exception as e:
+        return f"**Error processing prediction:** {str(e)}"
 
 # Define the Gradio interface
 # Using min/max/median from the dataset for the top 5 features
@@ -70,7 +68,12 @@ demo = gr.Interface(
     ],
     outputs=gr.Markdown(),
     title="Breast Cancer Diagnostic Tool",
-    description="Enter the cellular measurements from the FNA biopsy. The model will predict whether the mass is Benign or Malignant based on the Random Forest classifier trained on the Wisconsin Breast Cancer Dataset."
+    description=(
+        "Enter the cellular measurements from the FNA biopsy. "
+        "The model will predict whether the mass is **Benign** or **Malignant** "
+        "using a Random Forest classifier."
+    ),
+    flagging_mode="never"
 )
 
 if __name__ == "__main__":

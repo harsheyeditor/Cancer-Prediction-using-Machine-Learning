@@ -28,14 +28,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# Constants
-# =============================================================================
-# Using relative paths from the project root
-RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
-PROCESSED_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
-RAW_FILENAME = "breast_cancer.csv"
-PROCESSED_FILENAME = "breast_cancer_cleaned.csv"
+from src import config
 
 
 def load_from_sklearn() -> pd.DataFrame:
@@ -83,7 +76,7 @@ def load_from_sklearn() -> pd.DataFrame:
 
         # Add target column: sklearn uses 0=malignant, 1=benign
         # We'll map to string labels first for clarity
-        df["diagnosis"] = pd.Series(data.target).map({0: "M", 1: "B"})
+        df["diagnosis"] = pd.Series(data.target).map({0: config.POSITIVE_LABEL, 1: config.NEGATIVE_LABEL})
 
         # Add an ID column (sklearn doesn't include one)
         df.insert(0, "id", range(1, len(df) + 1))
@@ -95,8 +88,8 @@ def load_from_sklearn() -> pd.DataFrame:
         )
         return df
 
-    except ImportError as e:
-        logger.error("sklearn is not installed: %s", e)
+    except Exception as e:
+        logger.error("Failed to load sklearn dataset: %s", e)
         raise
 
 
@@ -114,11 +107,16 @@ def save_raw_data(df: pd.DataFrame) -> str:
     Returns:
         str: Path to the saved file
     """
-    os.makedirs(RAW_DATA_DIR, exist_ok=True)
-    filepath = os.path.join(RAW_DATA_DIR, RAW_FILENAME)
-    df.to_csv(filepath, index=False)
-    logger.info("Raw data saved to: %s", filepath)
-    return filepath
+    os.makedirs(config.RAW_DATA_DIR, exist_ok=True)
+    filepath = os.path.join(config.RAW_DATA_DIR, config.RAW_DATA_FILE)
+    
+    try:
+        df.to_csv(filepath, index=False)
+        logger.info("Raw data saved to: %s", filepath)
+        return filepath
+    except Exception as e:
+        logger.error("Failed to save raw data: %s", e)
+        raise
 
 
 def load_raw_data() -> pd.DataFrame:
@@ -131,15 +129,19 @@ def load_raw_data() -> pd.DataFrame:
     Raises:
         FileNotFoundError: If raw data hasn't been saved yet
     """
-    filepath = os.path.join(RAW_DATA_DIR, RAW_FILENAME)
+    filepath = os.path.join(config.RAW_DATA_DIR, config.RAW_DATA_FILE)
     if not os.path.exists(filepath):
-        raise FileNotFoundError(
-            f"Raw data not found at {filepath}. "
-            "Run load_from_sklearn() and save_raw_data() first."
-        )
-    df = pd.read_csv(filepath)
-    logger.info("Loaded raw data from: %s (%d rows)", filepath, len(df))
-    return df
+        error_msg = f"Raw data not found at {filepath}. Run load_from_sklearn() and save_raw_data() first."
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
+        
+    try:
+        df = pd.read_csv(filepath)
+        logger.info("Loaded raw data from: %s (%d rows)", filepath, len(df))
+        return df
+    except Exception as e:
+        logger.error("Error reading raw data CSV: %s", e)
+        raise
 
 
 def load_processed_data() -> pd.DataFrame:
@@ -152,15 +154,19 @@ def load_processed_data() -> pd.DataFrame:
     Raises:
         FileNotFoundError: If processed data hasn't been created yet
     """
-    filepath = os.path.join(PROCESSED_DATA_DIR, PROCESSED_FILENAME)
+    filepath = os.path.join(config.PROCESSED_DATA_DIR, config.PROCESSED_DATA_FILE)
     if not os.path.exists(filepath):
-        raise FileNotFoundError(
-            f"Processed data not found at {filepath}. "
-            "Run the preprocessing notebook (02_preprocessing.ipynb) first."
-        )
-    df = pd.read_csv(filepath)
-    logger.info("Loaded processed data from: %s (%d rows)", filepath, len(df))
-    return df
+        error_msg = f"Processed data not found at {filepath}. Run the preprocessing pipeline first."
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
+        
+    try:
+        df = pd.read_csv(filepath)
+        logger.info("Loaded processed data from: %s (%d rows)", filepath, len(df))
+        return df
+    except Exception as e:
+        logger.error("Error reading processed data CSV: %s", e)
+        raise
 
 
 def get_feature_descriptions() -> dict:

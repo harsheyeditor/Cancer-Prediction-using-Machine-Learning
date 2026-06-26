@@ -4,21 +4,28 @@ Training Module - Cancer Prediction Project
 
 Standalone script for training the final model.
 This script loads the dataset, processes it using the shared preprocessing module,
-trains the model, and saves the artifacts to the models/ directory.
+splits it into train and test sets, trains a pipeline, evaluates it,
+and saves the artifacts to the models/ directory.
 
 Usage:
-    python src/train.py
+    python -m src.train
 """
 
 import os
 import json
 import logging
+
 import joblib
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, classification_report
 
-from data_loader import load_from_sklearn, save_raw_data
-from preprocessing import clean_dataset, scale_features
+from src import config
+from src.data_loader import load_from_sklearn, save_raw_data
+from src.preprocessing import clean_dataset
 
 # Configure logging
 logging.basicConfig(
@@ -27,90 +34,89 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Absolute paths
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-PROCESSED_DATA_PATH = os.path.join(DATA_DIR, "processed", "breast_cancer_cleaned.csv")
-FEATURES_PATH = os.path.join(DATA_DIR, "processed", "selected_features.json")
-MODEL_DIR = os.path.join(PROJECT_ROOT, "models")
-MODEL_OUT = os.path.join(MODEL_DIR, "cancer_prediction_model.pkl")
-SCALER_OUT = os.path.join(MODEL_DIR, "scaler.pkl")
-
 def create_directories():
-    os.makedirs(os.path.dirname(PROCESSED_DATA_PATH), exist_ok=True)
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    """Ensure all required output directories exist."""
+    os.makedirs(os.path.dirname(os.path.join(config.PROCESSED_DATA_DIR, config.PROCESSED_DATA_FILE)), exist_ok=True)
+    os.makedirs(config.MODEL_DIR, exist_ok=True)
 
 def train_and_save_model():
-    """Train the final production model and save artifacts."""
+    """Train the final production pipeline and save artifacts."""
     create_directories()
     
-    # 1. Load Data using data_loader
-    logger.info("Loading breast cancer dataset using data_loader...")
+    # 1. Load Data
+    logger.info("Loading breast cancer dataset...")
     df_raw = load_from_sklearn()
-    
-    # Save the raw data (which now has correct feature names and 'M'/'B' targets)
     save_raw_data(df_raw)
     
-    # 2. Preprocess Data using preprocessing module
+    # 2. Preprocess Data
     logger.info("Cleaning dataset...")
-    # clean_dataset drops 'id', handles missing values, and encodes M->1, B->0
-    df_clean, label_encoder = clean_dataset(df_raw)
+    df_clean, _ = clean_dataset(df_raw)
     
     # 3. Feature Selection
-    selected_features = [
-        'concave points_worst',
-        'perimeter_worst',
-        'concave points_mean',
-        'radius_worst',
-        'area_worst'
-    ]
-    
-    # Verify features exist
+    selected_features = config.SELECTED_FEATURES
     for f in selected_features:
         if f not in df_clean.columns:
-            logger.error(f"Feature {f} not found in dataframe.")
+            raise KeyError(f"Feature '{f}' not found in dataset. Pipeline cannot proceed.")
             
     X = df_clean[selected_features]
-    y = df_clean['diagnosis']
+    y = df_clean[config.TARGET_COLUMN]
     
-    # Save processed data and selected features
-    df_clean.to_csv(PROCESSED_DATA_PATH, index=False)
-    with open(FEATURES_PATH, 'w') as f:
-        json.dump(selected_features, f)
-    logger.info("Saved processed data and features.")
+    # Save processed data
+    processed_path = os.path.join(config.PROCESSED_DATA_DIR, config.PROCESSED_DATA_FILE)
+    df_clean.to_csv(processed_path, index=False)
+    logger.info("Saved processed data to %s", processed_path)
     
-    # 4. Scale features
-    logger.info("Scaling features...")
-    # scale_features takes (X_train, X_test). Since we are training the final model on ALL data,
-    # we just pass X as both train and test to get the fitted scaler and scaled data.
-    X_scaled, _, scaler = scale_features(X, X)
+    # Calculate and save feature medians for fallback during inference
+    medians = X.median().to_dict()
+    medians_path = os.path.join(config.MODEL_DIR, config.MEDIANS_FILE)
+    with open(medians_path, 'w') as f:
+        json.dump(medians, f, indent=4)
+    logger.info("Saved feature medians to %s", medians_path)
+
+    # 4. Train-Test Split (Reproducible)
+    logger.info("Splitting data into train and test sets (test_size=%.2f)...", config.TEST_SIZE)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=config.TEST_SIZE, random_state=config.RANDOM_STATE, stratify=y
+    )
+
+    # 5. Build and Train Pipeline
+    logger.info("Building and training the ML pipeline...")
+    pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('classifier', RandomForestClassifier(**config.MODEL_HYPERPARAMETERS))
+    ])
     
-    # 5. Train model
-    logger.info("Training RandomForestClassifier...")
-    model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42, n_jobs=-1)
-    model.fit(X_scaled, y)
+    pipeline.fit(X_train, y_train)
     
-    # 6. Save artifacts
-    joblib.dump(model, MODEL_OUT)
-    joblib.dump(scaler, SCALER_OUT)
-    logger.info(f"[PASS] Model saved to: {MODEL_OUT}")
-    logger.info(f"[PASS] Scaler saved to: {SCALER_OUT}")
+    # 6. Evaluate Model
+    logger.info("Evaluating model on test set...")
+    y_pred = pipeline.predict(X_test)
+    y_prob = pipeline.predict_proba(X_test)[:, 1]
     
-    # Validation Check
-    if os.path.exists(MODEL_OUT) and os.path.exists(SCALER_OUT):
-        logger.info("Validation: Model artifacts exist.")
-    else:
-        logger.error("Validation: Model artifacts missing.")
-        
+    acc = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_prob)
+    
+    logger.info("Evaluation Results:")
+    logger.info(f"  Accuracy:  {acc:.4f}")
+    logger.info(f"  F1-Score:  {f1:.4f}")
+    logger.info(f"  ROC-AUC:   {roc_auc:.4f}")
+    logger.info("\n" + classification_report(y_test, y_pred, target_names=[config.NEGATIVE_LABEL, config.POSITIVE_LABEL]))
+    
+    # 7. Save Pipeline
+    pipeline_out = os.path.join(config.MODEL_DIR, config.PIPELINE_FILE)
+    joblib.dump(pipeline, pipeline_out)
+    logger.info(f"[PASS] Pipeline saved to: {pipeline_out}")
+    
     # Smoke Test
     try:
-        from predict import CancerPredictor
-        predictor = CancerPredictor(model_dir=MODEL_DIR, data_dir=DATA_DIR)
+        from src.predict import CancerPredictor
+        predictor = CancerPredictor(model_dir=config.MODEL_DIR)
         test_patient = {f: 10.0 for f in selected_features}
         res = predictor.predict(test_patient)
         logger.info(f"Smoke test successful: Prediction = {res['diagnosis']}")
-    except ImportError:
-        logger.warning("Smoke test skipped: Could not import CancerPredictor (ensure you run from root or src).")
+    except ImportError as e:
+        logger.warning(f"Smoke test skipped: Could not import CancerPredictor ({e}).")
     except Exception as e:
         logger.error(f"Smoke test failed: {e}")
 

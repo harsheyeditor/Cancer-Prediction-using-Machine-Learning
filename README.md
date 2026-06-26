@@ -33,6 +33,7 @@ Cancer Prediction using Machine Learning/
 |   |-- 02_preprocessing.ipynb
 |   |-- ...
 |-- src/                      # Reusable Python modules
+|   |-- config.py                 # Central configuration (constants, paths)
 |   |-- data_loader.py
 |   |-- predict.py
 |   |-- preprocessing.py
@@ -71,10 +72,10 @@ pip install -r requirements.txt
 
 ### 2. Running the Data Pipeline & Training
 
-Before running the app or notebooks, generate the required artifacts (data and models). The `train.py` script will automatically download the dataset, process it, train the model, and save the artifacts.
+Before running the app or notebooks, generate the required artifacts (data and models). The `train.py` script will automatically download the dataset, process it, split it, train the machine learning pipeline, and save the artifacts.
 
 ```powershell
-python src/train.py
+python -m src.train
 ```
 
 ### 3. Running the Web App (Gradio)
@@ -101,9 +102,9 @@ jupyter notebook
 To maintain a clean repository and ensure reproducibility from the source, the following generated artifacts are intentionally ignored by Git:
 - `data/raw/`: Raw datasets are downloaded dynamically via `sklearn` in the training pipeline.
 - `data/processed/`: Cleaned data and feature lists are generated from the raw data.
-- `models/`: Serialized ML models and scalers (`.pkl`) are regenerated during training.
+- `models/`: Unified ML pipeline (`pipeline.pkl`) and medians (`feature_medians.json`) are regenerated during training.
 
-All of these artifacts can be deterministically recreated at any time by running `python src/train.py`.
+All of these artifacts can be deterministically recreated at any time by running `python -m src.train`.
 
 ---
 
